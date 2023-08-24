@@ -8,7 +8,6 @@ on:
       - 'feature**'
   delete:
 
-
 permissions:
   id-token: write # This is required for aws oidc connection
   contents: read # This is required for actions/checkout
@@ -82,7 +81,6 @@ jobs:
     with:
       cfn-template: ${{ needs._2-1-feature.outputs.cfn-template-path }}
       cfn-stack-name: ${{ needs._2-1-feature.outputs.cfn-feature-br-stack-name }}
-      cfn-stack-type: ${{ needs._2-1-feature.outputs.cfn-stack-type }}
     secrets:
       aws_region: ${{ secrets.AWS_REGION }}
       aws_role_arn: ${{ secrets.DEVL_AWS_ROLE_ARN }}
@@ -95,7 +93,6 @@ jobs:
     with:
       cfn-template: ${{ needs._2-2-devl.outputs.cfn-template-path }}
       cfn-stack-name: ${{ needs._2-2-devl.outputs.cfn-main-br-stack-name }}
-      cfn-stack-type: ${{ needs._2-2-devl.outputs.cfn-stack-type }}
     secrets:
       aws_region: ${{ secrets.AWS_REGION }}
       aws_role_arn: ${{ secrets.DEVL_AWS_ROLE_ARN }}
@@ -121,7 +118,6 @@ jobs:
     with:
       cfn-template: ${{ needs._2-4-prod.outputs.cfn-template-path }}
       cfn-stack-name: ${{ needs._2-4-prod.outputs.cfn-main-br-stack-name }}
-      cfn-stack-type: ${{ needs._2-4-prod.outputs.cfn-stack-type }}
     secrets:
       aws_region: ${{ secrets.AWS_REGION }}
       aws_role_arn: ${{ secrets.PROD_AWS_ROLE_ARN }}
