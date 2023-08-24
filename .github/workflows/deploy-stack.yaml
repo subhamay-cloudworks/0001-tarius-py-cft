@@ -127,7 +127,8 @@ jobs:
     needs: [ _3-1-feature ]
     uses: subhamay-gh-actions/cfdelete/.github/workflows/cf-delete.yaml@v1
     with:
-      cfn-stack-name: ${{ needs._3-1-feature.outputs.cfn-stack-name }}
+      github_env: devl
+      ci-build: ${{ needs._3-1-feature.outputs.ci-build }}
     secrets:
       aws_region: ${{ secrets.AWS_REGION }}
       aws_role_arn: ${{ secrets.PROD_AWS_ROLE_ARN }}
