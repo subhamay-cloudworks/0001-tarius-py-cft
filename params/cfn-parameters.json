@@ -1,0 +1,28 @@
+{
+    "stack-prefix": "cust-resource",
+    "stack-suffix": "s3-stack",
+    "template-path": "/cft/s3-custom-resource-lambda.yaml",
+    "parameters": {
+        "devl": [
+            {
+                "Environment": "devl",
+                "KmsMasterKeyId": "f7eb118d-f1d2-4d70-a046-dfada470840e",
+                "ProjectName": "custresource"
+            }
+        ],
+        "test": [
+            {
+                "Environment": "test",
+                "KmsMasterKeyId": "81923ac0-d35f-4214-aaf8-c6ebe0c62297",
+                "ProjectName": "custresource"
+            }
+        ],
+        "prod": [
+            {
+                "Environment": "prod",
+                "KmsMasterKeyId": "5bb00cfc-935f-489c-917b-764052d723b2",
+                "ProjectName": "custresource"
+            }
+        ]
+    }
+}

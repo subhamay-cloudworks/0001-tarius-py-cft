@@ -1,0 +1,140 @@
+name: "Build and Deploy CloudFormation Stack"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'feature**'
+  delete:
+
+
+permissions:
+  id-token: write # This is required for aws oidc connection
+  contents: read # This is required for actions/checkout
+  pull-requests: write # This is required for gh bot to comment PR  
+
+jobs:
+  _1-test:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - run: |
+        echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event job - test."
+        # trigger the tests here
+  _2-1-feature:
+    if: startsWith(github.ref, 'refs/heads/feature')
+    needs: [_1-test]
+    uses: subhamay-gh-actions/cfpackage/.github/workflows/cf-package.yaml@v1
+    with:
+      github_env: devl
+      upload-template: 'true'
+      upload-code: 'false'
+    secrets:
+      aws_region: ${{ secrets.AWS_REGION }}
+      aws_role_arn: ${{ secrets.DEVL_AWS_ROLE_ARN }}
+      kms_key_arn: ${{ secrets.DEVL_AWS_KMS_KEY_ARN }}
+      code_repository_s3_bucket: ${{ secrets.DEVL_CODE_REPOSITORY_S3_BUCKET }}
+  _2-2-devl:
+    if: github.ref == 'refs/heads/main'
+    needs: [_1-test]
+    uses: subhamay-gh-actions/cfpackage/.github/workflows/cf-package.yaml@v1
+    with:
+      github_env: devl
+      upload-template: 'true'
+      upload-code: 'false'
+    secrets:
+      aws_region: ${{ secrets.AWS_REGION }}
+      aws_role_arn: ${{ secrets.DEVL_AWS_ROLE_ARN }}
+      kms_key_arn: ${{ secrets.DEVL_AWS_KMS_KEY_ARN }}
+      code_repository_s3_bucket: ${{ secrets.DEVL_CODE_REPOSITORY_S3_BUCKET }}
+  _2-3-test:
+    if: github.ref == 'refs/heads/main'
+    needs: [_1-test ]
+    uses: subhamay-gh-actions/cfpackage/.github/workflows/cf-package.yaml@v1
+    with:
+      github_env: test
+      upload-template: 'true'
+      upload-code: 'false'
+    secrets:
+      aws_region: ${{ secrets.AWS_REGION }}
+      aws_role_arn: ${{ secrets.TEST_AWS_ROLE_ARN }}
+      kms_key_arn: ${{ secrets.TEST_AWS_KMS_KEY_ARN }}
+      code_repository_s3_bucket: ${{ secrets.TEST_CODE_REPOSITORY_S3_BUCKET }}
+  _2-4-prod:
+    if: github.ref == 'refs/heads/main'
+    needs: [ _1-test ]
+    uses: subhamay-gh-actions/cfpackage/.github/workflows/cf-package.yaml@v1
+    with:
+      github_env: prod
+      upload-template: 'true'
+      upload-code: 'false'
+    secrets:
+      aws_region: ${{ secrets.AWS_REGION }}
+      aws_role_arn: ${{ secrets.PROD_AWS_ROLE_ARN }}
+      kms_key_arn: ${{ secrets.PROD_AWS_KMS_KEY_ARN }}
+      code_repository_s3_bucket: ${{ secrets.PROD_CODE_REPOSITORY_S3_BUCKET }}
+  _3-1-feature:
+    if: startsWith(github.ref, 'refs/heads/feature')
+    needs: [ _2-1-feature ]
+    uses: subhamay-gh-actions/cfcreate/.github/workflows/cf-create.yaml@v1
+    with:
+      cfn-template: ${{ needs._2-1-feature.outputs.cfn-template-path }}
+      cfn-stack-name: ${{ needs._2-1-feature.outputs.cfn-feature-br-stack-name }}
+      cfn-stack-type: ${{ needs._2-1-feature.outputs.cfn-stack-type }}
+    secrets:
+      aws_region: ${{ secrets.AWS_REGION }}
+      aws_role_arn: ${{ secrets.DEVL_AWS_ROLE_ARN }}
+      kms_key_arn: ${{ secrets.DEVL_AWS_KMS_KEY_ARN }}
+      code_repository_s3_bucket: ${{ secrets.DEVL_CODE_REPOSITORY_S3_BUCKET }}
+  _3-2-devl:
+    if: github.ref == 'refs/heads/main'
+    needs: [ _2-2-devl ]
+    uses: subhamay-gh-actions/cfcreate/.github/workflows/cf-create.yaml@v1
+    with:
+      cfn-template: ${{ needs._2-2-devl.outputs.cfn-template-path }}
+      cfn-stack-name: ${{ needs._2-2-devl.outputs.cfn-main-br-stack-name }}
+      cfn-stack-type: ${{ needs._2-2-devl.outputs.cfn-stack-type }}
+    secrets:
+      aws_region: ${{ secrets.AWS_REGION }}
+      aws_role_arn: ${{ secrets.DEVL_AWS_ROLE_ARN }}
+      kms_key_arn: ${{ secrets.DEVL_AWS_KMS_KEY_ARN }}
+      code_repository_s3_bucket: ${{ secrets.DEVL_CODE_REPOSITORY_S3_BUCKET }}
+  _4-2-test:
+    if: github.ref == 'refs/heads/main'
+    needs: [ _2-3-test,_3-2-devl ]
+    uses: subhamay-gh-actions/cfcreate/.github/workflows/cf-create.yaml@v1
+    with:
+      cfn-template: ${{ needs._2-3-test.outputs.cfn-template-path }}
+      cfn-stack-name: ${{ needs._2-3-test.outputs.cfn-main-br-stack-name }}
+      cfn-stack-type: ${{ needs._2-3-test.outputs.cfn-stack-type }}
+    secrets:
+      aws_region: ${{ secrets.AWS_REGION }}
+      aws_role_arn: ${{ secrets.TEST_AWS_ROLE_ARN }}
+      kms_key_arn: ${{ secrets.TEST_AWS_KMS_KEY_ARN }}
+      code_repository_s3_bucket: ${{ secrets.TEST_CODE_REPOSITORY_S3_BUCKET }}
+  _5-1-prod:
+    if: github.ref == 'refs/heads/main'
+    needs: [_2-4-prod,_3-2-devl, _4-2-test ]
+    uses: subhamay-gh-actions/cfcreate/.github/workflows/cf-create.yaml@v1
+    with:
+      cfn-template: ${{ needs._2-4-prod.outputs.cfn-template-path }}
+      cfn-stack-name: ${{ needs._2-4-prod.outputs.cfn-main-br-stack-name }}
+      cfn-stack-type: ${{ needs._2-4-prod.outputs.cfn-stack-type }}
+    secrets:
+      aws_region: ${{ secrets.AWS_REGION }}
+      aws_role_arn: ${{ secrets.PROD_AWS_ROLE_ARN }}
+      kms_key_arn: ${{ secrets.PROD_AWS_KMS_KEY_ARN }}
+      code_repository_s3_bucket: ${{ secrets.PROD_CODE_REPOSITORY_S3_BUCKET }}
+  _4-1-feature:
+    if: startsWith(github.ref, 'refs/heads/feature')
+    needs: [ _3-1-feature ]
+    uses: subhamay-gh-actions/cfdelete/.github/workflows/cf-delete.yaml@v1
+    with:
+      cfn-stack-name: ${{ needs._3-1-feature.outputs.cfn-stack-name }}
+    secrets:
+      aws_region: ${{ secrets.AWS_REGION }}
+      aws_role_arn: ${{ secrets.PROD_AWS_ROLE_ARN }}
+      kms_key_arn: ${{ secrets.PROD_AWS_KMS_KEY_ARN }}
+      code_repository_s3_bucket: ${{ secrets.PROD_CODE_REPOSITORY_S3_BUCKET }}

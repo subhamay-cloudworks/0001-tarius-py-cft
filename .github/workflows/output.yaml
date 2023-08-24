@@ -1,0 +1,11 @@
+name: Output information
+on: 
+  workflow_dispatch:
+jobs:
+  info:
+    runs-on: ubuntu-latest
+    steps:
+      - name: test-command
+        run: |
+          ci-build-suffix=`echo "${{ github.ref_name }}"|sed 's/\//-/g'|cut -c25`
+          echo ${ci-build-suffix}
